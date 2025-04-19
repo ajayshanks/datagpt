@@ -17,16 +17,18 @@ def main():
         # For demonstration, we're pre-loading with sample data
         st.session_state.webhook_response = load_sample_data()
     
+    # Function to handle step transition
+    def go_to_step_2():
+        st.session_state.current_step = 2
+    
     # Display the appropriate step
     if st.session_state.current_step == 1:
-        display_step1()
+        display_step1(go_to_step_2)
     elif st.session_state.current_step == 2:
         display_step2()
 
 
-def display_step1():
-    st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
-    
+def display_step1(on_submit_callback):
     # App header
     st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
@@ -77,9 +79,7 @@ def display_step1():
             business_rules.append(st.text_area(f"Rule {i+1}", value=rule, key=rule_key, height=100))
         
         # Form submission buttons
-        col1, col2 = st.columns(2)
-        submit_button = col1.form_submit_button(label="Submit")
-        reset_button = col2.form_submit_button(label="Reset")
+        submit_button = st.form_submit_button(label="Submit")
     
     # Add button for new rule RIGHT AFTER the form
     if st.button("Add Another Business Rule"):
@@ -107,6 +107,9 @@ def display_step1():
             st.success("Form submitted successfully!")
             st.json(payload)
             
+            # Save the payload in session state for reference
+            st.session_state.last_payload = payload
+            
             # In a real application, send data to webhook
             try:
                 headers = {
@@ -122,17 +125,18 @@ def display_step1():
                 #     st.error(f"Error sending data: {response.status_code} - {response.text}")
                 #     return
                 
-                # For demo purposes, we'll use our sample data instead of a real webhook call
-                st.info("If connected to a real webhook, the data would be sent now.")
+                # For demo purposes, we'll use our sample data
+                st.info("Using sample data (in a real app, this would come from the webhook)")
                 
-                # Navigate to Step 2
-                st.session_state.current_step = 2
-                st.rerun()
+                # Add a clear button to navigate to step 2
+                if st.button("Proceed to Step 2"):
+                    on_submit_callback()
                 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
     
-    if reset_button:
+    # Add a button to reset the form
+    if st.button("Reset Form"):
         st.session_state.business_rules = [""]
         st.rerun()
     
@@ -142,8 +146,6 @@ def display_step1():
 
 
 def display_step2():
-    st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
-    
     # App header
     st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
