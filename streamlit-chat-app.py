@@ -118,16 +118,15 @@ def display_step1(on_submit_callback):
                     "Content-Type": "application/json"
                 }
                 
-                # Comment out the actual POST request during testing
-                # response = requests.post(webhook_url, json=payload, headers=headers)
-                # if response.status_code == 200:
-                #     st.session_state.webhook_response = response.json()
-                # else:
-                #     st.error(f"Error sending data: {response.status_code} - {response.text}")
-                #     return
+               
+                response = requests.post(webhook_url, json=payload, headers=headers)
+                if response.status_code == 200:
+                    st.session_state.webhook_response = response.json()
+                else:
+                    st.error(f"Error sending data: {response.status_code} - {response.text}")
+                    return
                 
-                # For demo purposes, we'll use our sample data
-                st.info("Using sample data (in a real app, this would come from the webhook)")
+
                 
                 # Move to Step 2 immediately
                 st.session_state.current_step = 2
