@@ -52,8 +52,8 @@ def display_step1(on_submit_callback):
     ]
     
     # Webhook configuration
-    webhook_url = "https://your-webhook-endpoint.com/api/data-insights"
-    bearer_token = "YOUR_BEARER_TOKEN_HERE"  # Replace with actual token
+    webhook_url = "https://ajayshanks.app.n8n.cloud/webhook-test/b058b9af-2a5d-4b61-ba29-3522902ba6c3"
+    bearer_token = "datagpt@123"  # Replace with actual token
     
     # Form creation
     with st.form(key="data_insights_form"):
