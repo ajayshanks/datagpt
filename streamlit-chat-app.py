@@ -3,24 +3,22 @@ import requests
 import json
 
 def main():
-    st.set_page_config(page_title="Data GPT", layout="wide")
+    st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
     
     # App header
-    st.title("Your Data to Insights Agent")
+    st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     
     # Step indicator
     st.markdown("## Step 1: Select your data and use case")
     
-    # Editable configurations - For easy modification
-    # These would typically be loaded from a config file or database
+    # Updated data sources and use cases as provided
     data_sources = [
         "iqvia_xpo_rx", 
         "semarchy_cm_pub_m_hcp_profile", 
         "semarchy_cm_pub_x_address", 
         "zip_territory", 
         "semarchy_cm_pub_x_hcp_address"
-        
     ]
     
     use_cases = [
@@ -32,6 +30,15 @@ def main():
     # Webhook configuration
     webhook_url = "https://your-webhook-endpoint.com/api/data-insights"
     bearer_token = "YOUR_BEARER_TOKEN_HERE"  # Replace with actual token
+    
+    # Initialize business rules in session state if not present
+    if 'business_rules' not in st.session_state:
+        st.session_state.business_rules = [""]
+    
+    # Add button for new rule (outside the form)
+    if st.button("Add Another Business Rule"):
+        st.session_state.business_rules.append("")
+        st.rerun()
     
     # Form creation
     with st.form(key="data_insights_form"):
@@ -50,25 +57,16 @@ def main():
         # 3. Business rules input - dynamic text boxes
         st.subheader("Define your business rules:")
         
-        # Initialize business rules in session state if not present
-        if 'business_rules' not in st.session_state:
-            st.session_state.business_rules = [""]
-        
         # Display existing business rule inputs
         business_rules = []
         for i, rule in enumerate(st.session_state.business_rules):
             rule_key = f"rule_{i}"
             business_rules.append(st.text_area(f"Rule {i+1}", value=rule, key=rule_key, height=100))
         
-        # Add button for new rule
-        if st.button("Add Another Business Rule"):
-            st.session_state.business_rules.append("")
-            st.rerun()
-        
-        # Form submission buttons
+        # Form submission buttons - make sure these are inside the form
         col1, col2 = st.columns(2)
-        submit_button = col1.form_submit_button("Submit")
-        reset_button = col2.form_submit_button("Reset")
+        submit_button = col1.form_submit_button(label="Submit")
+        reset_button = col2.form_submit_button(label="Reset")
     
     # Form processing
     if submit_button:
