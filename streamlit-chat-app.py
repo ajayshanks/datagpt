@@ -35,11 +35,6 @@ def main():
     if 'business_rules' not in st.session_state:
         st.session_state.business_rules = [""]
     
-    # Add button for new rule (outside the form)
-    if st.button("Add Another Business Rule"):
-        st.session_state.business_rules.append("")
-        st.rerun()
-    
     # Form creation
     with st.form(key="data_insights_form"):
         # 1. Multi-select dropdown for data sources
@@ -67,6 +62,12 @@ def main():
         col1, col2 = st.columns(2)
         submit_button = col1.form_submit_button(label="Submit")
         reset_button = col2.form_submit_button(label="Reset")
+    
+    # Add button for new rule RIGHT AFTER the form
+    # This ensures it appears below the business rules but before form processing
+    if st.button("Add Another Business Rule"):
+        st.session_state.business_rules.append("")
+        st.rerun()
     
     # Form processing
     if submit_button:
