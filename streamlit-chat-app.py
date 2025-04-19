@@ -86,6 +86,7 @@ def display_step1(on_submit_callback):
         st.session_state.business_rules.append("")
         st.rerun()
     
+    
     # Form processing
     if submit_button:
         if not selected_data_sources:
@@ -128,7 +129,13 @@ def display_step1(on_submit_callback):
                 # For demo purposes, we'll use our sample data
                 st.info("Using sample data (in a real app, this would come from the webhook)")
                 
-                # Add a clear button to navigate to step 2
+                # Move to Step 2 immediately
+                st.session_state.current_step = 2
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
                 if st.button("Proceed to Step 2"):
                     on_submit_callback()
                 
