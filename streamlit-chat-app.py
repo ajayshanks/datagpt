@@ -151,31 +151,23 @@ def display_step1(on_submit_callback):
     st.markdown("Fill out the form above and click 'Submit' to continue to the next step.")
 
 
+
 def display_step2():
-    # App header
     st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
-    
-    # Step indicator
     st.markdown("## Step 2: Crawling and Ingestion")
-    
-    # Process the webhook response data
+
     if st.session_state.webhook_response:
         data = st.session_state.webhook_response
-        
-        # Create editable tables for each data source
+
         for dataset in data:
             for source_name, columns in dataset.items():
                 st.subheader(f"Data Source: {source_name}")
-                
-                # Create DataFrame for editing
                 df = pd.DataFrame(columns)
-                
-                # Initialize session state for this data source if not exists
+
                 if f'edited_df_{source_name}' not in st.session_state:
                     st.session_state[f'edited_df_{source_name}'] = df.copy()
-                
-                # Create an editable dataframe
+
                 edited_df = st.data_editor(
                     st.session_state[f'edited_df_{source_name}'],
                     key=f"editor_{source_name}",
@@ -191,58 +183,49 @@ def display_step2():
                         )
                     }
                 )
-                
-                # Update the session state with edited values
                 st.session_state[f'edited_df_{source_name}'] = edited_df
-        
-        # Buttons for navigation
+
         col1, col2 = st.columns(2)
-        
-        # Back button to return to Step 1
+
         if col1.button("Back to Step 1"):
             st.session_state.current_step = 1
             st.rerun()
-        
-        # Submit button to send updated data
-        if col2.button("Submit Updated Types"):
-            # Prepare the updated JSON for webhook
+
+        if col2.button("Submit"):
             updated_data = []
             for dataset in data:
                 updated_dataset = {}
                 for source_name, _ in dataset.items():
                     if f'edited_df_{source_name}' in st.session_state:
-                        # Convert DataFrame back to list of dicts
                         updated_dataset[source_name] = st.session_state[f'edited_df_{source_name}'].to_dict('records')
                 updated_data.append(updated_dataset)
-            
-            st.success("Updated data types submitted successfully!")
-            st.json(updated_data)
-            
-            webhook_url = "https://your-webhook-endpoint.com/api/data-insights/update-types"
-            bearer_token = "YOUR_BEARER_TOKEN_HERE"
-            
-            # In a real application, send data to webhook
+
+            webhook_url = "https://ajayshanks.app.n8n.cloud/webhook-test/0cfd6c96-9c7c-46aa-8a58-30b11b499172"
+            bearer_token = "datagpt@123"
+
             try:
                 headers = {
                     "Authorization": f"Bearer {bearer_token}",
                     "Content-Type": "application/json"
                 }
-                
-                # Commented out for demo
-                # response = requests.post(webhook_url, json=updated_data, headers=headers)
-                # if response.status_code == 200:
-                #     st.success(f"Data successfully updated. Response: {response.text}")
-                # else:
-                #     st.error(f"Error sending data: {response.status_code} - {response.text}")
-                
-                st.info("In a production environment, this would send the updated data types to the webhook.")
-                
-                # Here you would navigate to Step 3 if applicable
-                # st.session_state.current_step = 3
-                # st.rerun()
-                
+                response = requests.post(webhook_url, json=updated_data, headers=headers)
+                if response.status_code == 200:
+                    response_json = response.json()
+                    st.session_state.step2_response_message = response_json.get("message", str(response_json))
+                    st.success("Webhook response received!")
+                else:
+                    st.session_state.step2_response_message = f"Error: {response.status_code} - {response.text}"
+                    st.error("Failed to submit updated types.")
             except Exception as e:
-                st.error(f"An error occurred: {e}")
+                st.session_state.step2_response_message = f"Exception occurred: {str(e)}"
+                st.error("Exception while posting to webhook.")
+
+        if 'step2_response_message' in st.session_state:
+            st.markdown("### Webhook Response")
+            st.info(st.session_state.step2_response_message)
+            if st.button("Proceed to Step 3"):
+                st.session_state.current_step = 3
+                st.rerun()
     else:
         st.error("No data available from webhook response.")
         if st.button("Return to Step 1"):
