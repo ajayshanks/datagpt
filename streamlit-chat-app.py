@@ -45,21 +45,21 @@ if 'last_payload' not in st.session_state:
 # Configuration (make this editable or externally configurable as needed)
 CONFIG = {
     'Source Crawling': {
-        'webhook_url': 'https://yourdomain.com/source-crawling-webhook',
-        'bearer_token': 'your_token_here',
+        'webhook_url': 'https://ajayshanks.app.n8n.cloud/webhook-test/b058b9af-2a5d-4b61-ba29-3522902ba6c3',
+        'bearer_token': 'datagpt@123',
         'payload_template': lambda: st.session_state.last_payload
     },
     'Ingestion into Staging': {
-        'webhook_url': 'https://yourdomain.com/ingestion-webhook',
-        'bearer_token': 'your_token_here',
+        'webhook_url': 'https://ajayshanks.app.n8n.cloud/webhook-test/0cfd6c96-9c7c-46aa-8a58-30b11b499172',
+        'bearer_token': 'datagpt@123',
         'payload_template': lambda: st.session_state.last_payload
     }
 }
 
 st.title("Data to Insights Pipeline")
-st.markdown("### Select your data and use case")
+st.markdown("### Select your data, use case and business rules")
 
-# Step 1 form
+# Select data and use case and business rules form
 with st.form(key="data_insights_form"):
     data_sources = [
         "iqvia_xpo_rx", "semarchy_cm_pub_m_hcp_profile",
