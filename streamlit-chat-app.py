@@ -168,49 +168,14 @@ def display_step1(on_submit_callback):
     st.markdown("Fill out the form above and click 'Submit' to continue to the next step.")
 
 def proceed_to_step3():
-    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
-    bearer_token_step3 = "datagpt@123"
-
     data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
     table_names = [f"stg_{source}" for source in data_sources]
     payload = {"table_name": table_names}
 
     st.session_state.step3_payload = payload
-
-    try:
-        headers = {
-            "Authorization": f"Bearer {bearer_token_step3}",
-            "Content-Type": "application/json"
-        }
-        
-        st.info(f"Sending request to Step 3 webhook with payload: {payload}")
-        response = requests.post(webhook_url_step3, json=payload, headers=headers)
-        
-        if response.status_code == 200:
-            # Check if the response has content before parsing as JSON
-            if response.text.strip():
-                try:
-                    st.session_state.step3_response = response.json()
-                    st.session_state.current_step = 3
-                    st.rerun()
-                except json.JSONDecodeError as je:
-                    st.error(f"Invalid JSON response from webhook: {response.text}")
-                    st.error(f"JSON parsing error: {str(je)}")
-            else:
-                st.error("Webhook returned an empty response")
-                # Use sample data for demonstration purposes
-                st.session_state.step3_response = generate_sample_step3_data(table_names)
-                st.session_state.current_step = 3
-                st.rerun()
-        else:
-            st.error(f"Step 3 webhook failed: {response.status_code} - {response.text}")
-    except Exception as e:
-        st.error(f"Exception during Step 3 webhook call: {str(e)}")
-        # For demonstration, use sample data when there's an error
-        st.session_state.step3_response = generate_sample_step3_data(table_names)
-        if st.button("Continue with sample data"):
-            st.session_state.current_step = 3
-            st.rerun()
+    st.session_state.current_step = 3
+    st.session_state.step3_loading = True
+    st.rerun()
 
 def proceed_to_step4():
     webhook_url_step4 = "https://ajayshanks.app.n8n.cloud/webhook-test/4d5e6f7g-8h9i-10j11-12k13-14l15m16n17o"
@@ -311,8 +276,31 @@ def display_step2():
 
 def display_step3():
     st.title("Data to Insights Pipeline")
-    st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 3: Profiling and Tagging")
+
+    if st.session_state.get("step3_loading", False):
+        with st.spinner("Processing..."):
+            webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
+            bearer_token_step3 = "datagpt@123"
+            payload = st.session_state.get("step3_payload", {})
+
+            try:
+                headers = {
+                    "Authorization": f"Bearer {bearer_token_step3}",
+                    "Content-Type": "application/json"
+                }
+                response = requests.post(webhook_url_step3, json=payload, headers=headers)
+                if response.status_code == 200 and response.text.strip():
+                    st.session_state.step3_response = response.json()
+                else:
+                    st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+            except Exception:
+                st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+
+            st.session_state.step3_loading = False
+            st.rerun()
+        return
+
     st.markdown("### Review tags and summaries for each table and column")
 
     if "step3_response" not in st.session_state or not st.session_state.step3_response:
@@ -406,12 +394,17 @@ def display_step4():
     
     # Display Summary of Findings
     st.markdown("### Summary of Findings")
-    summary = st.session_state.step4_response.get("summary", "No summary available")
+
+    response_data = st.session_state.step4_response
+    if "parsed" in response_data:
+        response_data = response_data["parsed"]
+
+    summary = response_data.get("summary", "No summary available")
     st.info(summary)
     
     # Display Missing Attributes as a table
     st.markdown("### Missing Attributes")
-    missing_attributes = st.session_state.step4_response.get("missing_attributes", [])
+    missing_attributes = response_data.get("missing_attributes", [])
     
     if missing_attributes:
         df = pd.DataFrame(missing_attributes)
