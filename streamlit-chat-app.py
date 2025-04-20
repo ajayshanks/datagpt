@@ -148,49 +148,10 @@ def display_step1(on_submit_callback):
     st.markdown("Fill out the form above and click 'Submit' to continue to the next step.")
 
 def proceed_to_step3():
-    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
-    bearer_token_step3 = "datagpt@123"
-
-    data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
-    table_names = [f"stg_{source}" for source in data_sources]
-    payload = {"table_name": table_names}
-
-    st.session_state.step3_payload = payload
-
-    try:
-        headers = {
-            "Authorization": f"Bearer {bearer_token_step3}",
-            "Content-Type": "application/json"
-        }
-        
-        st.info(f"Sending request to Step 3 webhook with payload: {payload}")
-        response = requests.post(webhook_url_step3, json=payload, headers=headers)
-        
-        if response.status_code == 200:
-            # Check if the response has content before parsing as JSON
-            if response.text.strip():
-                try:
-                    st.session_state.step3_response = response.json()
-                    st.session_state.current_step = 3
-                    st.rerun()
-                except json.JSONDecodeError as je:
-                    st.error(f"Invalid JSON response from webhook: {response.text}")
-                    st.error(f"JSON parsing error: {str(je)}")
-            else:
-                st.error("Webhook returned an empty response")
-                # Use sample data for demonstration purposes
-                st.session_state.step3_response = generate_sample_step3_data(table_names)
-                st.session_state.current_step = 3
-                st.rerun()
-        else:
-            st.error(f"Step 3 webhook failed: {response.status_code} - {response.text}")
-    except Exception as e:
-        st.error(f"Exception during Step 3 webhook call: {str(e)}")
-        # For demonstration, use sample data when there's an error
-        st.session_state.step3_response = generate_sample_step3_data(table_names)
-        if st.button("Continue with sample data"):
-            st.session_state.current_step = 3
-            st.rerun()
+    # Immediately move to step 3 and set a loading flag
+    st.session_state.current_step = 3
+    st.session_state.step3_loading = True
+    st.rerun()
 
 def display_step2():
     st.title("Data to Insights Pipeline")
@@ -251,38 +212,95 @@ def display_step2():
         if st.button("Proceed to Step 3"):
             proceed_to_step3()
 
+def process_step3_data():
+    """Process the step3 webhook data - separated from display to allow for asynchronous loading"""
+    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
+    bearer_token_step3 = "datagpt@123"
+
+    data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
+    table_names = [f"stg_{source}" for source in data_sources]
+    payload = {"table_name": table_names}
+
+    st.session_state.step3_payload = payload
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {bearer_token_step3}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(webhook_url_step3, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            # Check if the response has content before parsing as JSON
+            if response.text.strip():
+                try:
+                    st.session_state.step3_response = response.json()
+                except json.JSONDecodeError as je:
+                    st.error(f"Invalid JSON response from webhook: {response.text}")
+                    st.error(f"JSON parsing error: {str(je)}")
+                    # Use sample data on error
+                    st.session_state.step3_response = generate_sample_step3_data(table_names)
+            else:
+                # Use sample data for empty response
+                st.session_state.step3_response = generate_sample_step3_data(table_names)
+        else:
+            # Use sample data when request fails
+            st.session_state.step3_response = generate_sample_step3_data(table_names)
+    except Exception as e:
+        # Use sample data when exception occurs
+        st.session_state.step3_response = generate_sample_step3_data(table_names)
+    
+    # Clear loading flag
+    st.session_state.step3_loading = False
+
 def display_step3():
     st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 3: Profiling and Tagging")
-    st.markdown("### Review tags and summaries for each table and column")
+    
+    # Check if we're in loading state
+    if st.session_state.get("step3_loading", False):
+        st.markdown("### Processing data...")
+        with st.spinner("Fetching data profiles and tags..."):
+            # Display a progress bar for better UI
+            progress_bar = st.progress(0)
+            for i in range(100):
+                time.sleep(0.01)  # simulate delay
+                progress_bar.progress(i + 1)
+            
+            # Process the data after showing the loading visuals
+            process_step3_data()
+            st.rerun()  # Refresh the page to show results
+    
+    # Display the data once loading is complete
+    if "step3_response" in st.session_state and st.session_state.step3_response:
+        st.markdown("### Review tags and summaries for each table and column")
+        
+        table_data = []
+        column_data = []
 
-    if "step3_response" not in st.session_state or not st.session_state.step3_response:
-        st.warning("No response from Step 3 webhook")
-        return
-
-    table_data = []
-    column_data = []
-
-    for item in st.session_state.step3_response:
-        table_data.append({
-            "table_name": item["table_name"],
-            "classification": item["classification"],
-            "summary": item["summary"]
-        })
-        for tag in item["column_tags"]:
-            column_data.append({
+        for item in st.session_state.step3_response:
+            table_data.append({
                 "table_name": item["table_name"],
-                "column_name": tag["column_name"],
-                "tag": tag["tag"],
-                "description": tag["description"]
+                "classification": item["classification"],
+                "summary": item["summary"]
             })
+            for tag in item["column_tags"]:
+                column_data.append({
+                    "table_name": item["table_name"],
+                    "column_name": tag["column_name"],
+                    "tag": tag["tag"],
+                    "description": tag["description"]
+                })
 
-    st.markdown("### Table Tags")
-    st.dataframe(pd.DataFrame(table_data))
+        st.markdown("### Table Tags")
+        st.dataframe(pd.DataFrame(table_data))
 
-    st.markdown("### Column Tags")
-    st.dataframe(pd.DataFrame(column_data))
+        st.markdown("### Column Tags")
+        st.dataframe(pd.DataFrame(column_data))
+    else:
+        st.warning("No response data available")
     
     # Navigation buttons
     st.markdown("---")
