@@ -1,10 +1,12 @@
 import streamlit as st
 import requests
 import json
+import time
+import itertools
 
 st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
 
-# Apply Apple-style inspired white background and subtle styling
+# Apply Apple-style inspired white background and subtle styling with animated loader
 st.markdown("""
     <style>
     body {
@@ -24,11 +26,20 @@ st.markdown("""
         padding: 1em;
         margin-bottom: 1em;
     }
-    .stButton>button {
+    .loader {
+        display: inline-block;
+        width: 1.2em;
+        height: 1.2em;
+        border-radius: 50%;
+        animation: blink 1.4s infinite ease-in-out both;
         background-color: #0071e3;
-        color: white;
-        border-radius: 8px;
-        padding: 0.5em 1em;
+    }
+    @keyframes blink {
+        0%, 80%, 100% {
+            transform: scale(0);
+        } 40% {
+            transform: scale(1);
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -42,6 +53,12 @@ if 'processing_updates' not in st.session_state:
 
 if 'last_payload' not in st.session_state:
     st.session_state.last_payload = {}
+
+if 'processing_flags' not in st.session_state:
+    st.session_state.processing_flags = {
+        'Source Crawling': False,
+        'Ingestion into Staging': False
+    }
 
 # Configuration (make this editable or externally configurable as needed)
 CONFIG = {
@@ -87,6 +104,14 @@ if st.button("Add Another Business Rule"):
     st.session_state.business_rules.append("")
     st.rerun()
 
+if st.button("Reset Form"):
+    st.session_state.business_rules = [""]
+    st.session_state.processing_updates = {
+        'Source Crawling': [],
+        'Ingestion into Staging': []
+    }
+    st.rerun()
+
 if submitted:
     if not selected_data_sources:
         st.error("Please select at least one data source.")
@@ -103,24 +128,29 @@ if submitted:
         st.success("Form submitted successfully!")
         st.json(payload)
 
-        # Automatically trigger Source Crawling webhook
-        source_config = CONFIG['Source Crawling']
+        # Trigger Source Crawling webhook
+        section = 'Source Crawling'
+        config = CONFIG[section]
+        st.session_state.processing_flags[section] = True
+        st.session_state.processing_updates[section].append("<span class='loader'></span> Processing...")
         try:
             headers = {
-                "Authorization": f"Bearer {source_config['bearer_token']}",
+                "Authorization": f"Bearer {config['bearer_token']}",
                 "Content-Type": "application/json"
             }
             response = requests.post(
-                source_config['webhook_url'],
-                json=source_config['payload_template'](),
+                config['webhook_url'],
+                json=config['payload_template'](),
                 headers=headers
             )
+            st.session_state.processing_flags[section] = False
             if response.status_code == 200:
-                st.session_state.processing_updates['Source Crawling'].append(f"Triggered successfully: {response.text}")
+                st.session_state.processing_updates[section][-1] = f"Triggered successfully: {response.text}"
             else:
-                st.session_state.processing_updates['Source Crawling'].append(f"Error: {response.status_code} - {response.text}")
+                st.session_state.processing_updates[section][-1] = f"Error: {response.status_code} - {response.text}"
         except Exception as e:
-            st.session_state.processing_updates['Source Crawling'].append(f"Exception: {str(e)}")
+            st.session_state.processing_flags[section] = False
+            st.session_state.processing_updates[section][-1] = f"Exception: {str(e)}"
 
 st.markdown("---")
 st.markdown("## Processing Updates")
@@ -133,10 +163,12 @@ for section, config in CONFIG.items():
         with st.container():
             st.markdown('<div class="update-box">', unsafe_allow_html=True)
             for update in st.session_state.processing_updates[section]:
-                st.markdown(f"- {update}")
+                st.markdown(f"- {update}", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         if st.button(f"Proceed to next step for {section}", key=f"btn_{section}"):
+            st.session_state.processing_flags[section] = True
+            st.session_state.processing_updates[section].append("<span class='loader'></span> Processing...")
             try:
                 headers = {
                     "Authorization": f"Bearer {config['bearer_token']}",
@@ -147,9 +179,11 @@ for section, config in CONFIG.items():
                     json=config['payload_template'](),
                     headers=headers
                 )
+                st.session_state.processing_flags[section] = False
                 if response.status_code == 200:
-                    st.session_state.processing_updates[section].append(f"Triggered successfully: {response.text}")
+                    st.session_state.processing_updates[section][-1] = f"Triggered successfully: {response.text}"
                 else:
-                    st.session_state.processing_updates[section].append(f"Error: {response.status_code} - {response.text}")
+                    st.session_state.processing_updates[section][-1] = f"Error: {response.status_code} - {response.text}"
             except Exception as e:
-                st.session_state.processing_updates[section].append(f"Exception: {str(e)}")
+                st.session_state.processing_flags[section] = False
+                st.session_state.processing_updates[section][-1] = f"Exception: {str(e)}"
