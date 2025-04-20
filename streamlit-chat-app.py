@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import json
 import time
-import itertools
+import pandas as pd
 
 st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
 
@@ -132,7 +132,7 @@ if submitted:
         section = 'Source Crawling'
         config = CONFIG[section]
         st.session_state.processing_flags[section] = True
-        st.session_state.processing_updates[section].append("<span class='loader'></span> Processing...")
+        st.session_state.processing_updates[section].append({"status": "processing"})
         try:
             headers = {
                 "Authorization": f"Bearer {config['bearer_token']}",
@@ -144,13 +144,14 @@ if submitted:
                 headers=headers
             )
             st.session_state.processing_flags[section] = False
-            if response.status_code == 200:
-                st.session_state.processing_updates[section][-1] = f"Triggered successfully: {response.text}"
-            else:
-                st.session_state.processing_updates[section][-1] = f"Error: {response.status_code} - {response.text}"
+            try:
+                response_data = response.json()
+                st.session_state.processing_updates[section][-1] = response_data
+            except:
+                st.session_state.processing_updates[section][-1] = {"raw": response.text}
         except Exception as e:
             st.session_state.processing_flags[section] = False
-            st.session_state.processing_updates[section][-1] = f"Exception: {str(e)}"
+            st.session_state.processing_updates[section][-1] = {"error": str(e)}
 
 st.markdown("---")
 st.markdown("## Processing Updates")
@@ -163,12 +164,19 @@ for section, config in CONFIG.items():
         with st.container():
             st.markdown('<div class="update-box">', unsafe_allow_html=True)
             for update in st.session_state.processing_updates[section]:
-                st.markdown(f"- {update}", unsafe_allow_html=True)
+                if isinstance(update, dict):
+                    try:
+                        df = pd.json_normalize(update)
+                        st.dataframe(df, use_container_width=True)
+                    except Exception as e:
+                        st.markdown(f"Raw JSON: {json.dumps(update)}")
+                else:
+                    st.markdown(f"- {update}", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         if st.button(f"Proceed to next step for {section}", key=f"btn_{section}"):
             st.session_state.processing_flags[section] = True
-            st.session_state.processing_updates[section].append("<span class='loader'></span> Processing...")
+            st.session_state.processing_updates[section].append({"status": "processing"})
             try:
                 headers = {
                     "Authorization": f"Bearer {config['bearer_token']}",
@@ -180,10 +188,11 @@ for section, config in CONFIG.items():
                     headers=headers
                 )
                 st.session_state.processing_flags[section] = False
-                if response.status_code == 200:
-                    st.session_state.processing_updates[section][-1] = f"Triggered successfully: {response.text}"
-                else:
-                    st.session_state.processing_updates[section][-1] = f"Error: {response.status_code} - {response.text}"
+                try:
+                    response_data = response.json()
+                    st.session_state.processing_updates[section][-1] = response_data
+                except:
+                    st.session_state.processing_updates[section][-1] = {"raw": response.text}
             except Exception as e:
                 st.session_state.processing_flags[section] = False
-                st.session_state.processing_updates[section][-1] = f"Exception: {str(e)}"
+                st.session_state.processing_updates[section][-1] = {"error": str(e)}
