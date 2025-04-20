@@ -114,12 +114,12 @@ def display_step1(on_submit_callback):
             # In a real application, send data to webhook
             try:
                 headers = {
-                    "Authorization": f"Bearer {bearer_token_step1}",
+                    "Authorization": f"Bearer {bearer_token_step2}",
                     "Content-Type": "application/json"
                 }
                 
                
-                response = requests.post(webhook_url_step1, json=payload, headers=headers)
+                response = requests.post(webhook_url_step2, json=payload, headers=headers)
                 if response.status_code == 200:
                     st.session_state.webhook_response = response.json()
                 else:
