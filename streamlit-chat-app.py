@@ -102,6 +102,25 @@ if submitted:
         st.success("Form submitted successfully!")
         st.json(payload)
 
+        # Automatically trigger Source Crawling webhook
+        source_config = CONFIG['Source Crawling']
+        try:
+            headers = {
+                "Authorization": f"Bearer {source_config['bearer_token']}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(
+                source_config['webhook_url'],
+                json=source_config['payload_template'](),
+                headers=headers
+            )
+            if response.status_code == 200:
+                st.session_state.processing_updates['Source Crawling'].append(f"Triggered successfully: {response.text}")
+            else:
+                st.session_state.processing_updates['Source Crawling'].append(f"Error: {response.status_code} - {response.text}")
+        except Exception as e:
+            st.session_state.processing_updates['Source Crawling'].append(f"Exception: {str(e)}")
+
 st.markdown("---")
 st.markdown("## Processing Updates")
 
@@ -133,12 +152,3 @@ for section, config in CONFIG.items():
                     st.session_state.processing_updates[section].append(f"Error: {response.status_code} - {response.text}")
             except Exception as e:
                 st.session_state.processing_updates[section].append(f"Exception: {str(e)}")
-
-# Simulated webhook response receiver (in reality, this would be a separate endpoint receiving POST requests)
-# You could run this on a server to push responses into the app using e.g. server-sent events or polling a backend DB
-# For demo purposes only:
-if st.button("Simulate webhook response for Source Crawling"):
-    st.session_state.processing_updates['Source Crawling'].append("Received update: Source crawling completed.")
-
-if st.button("Simulate webhook response for Ingestion into Staging"):
-    st.session_state.processing_updates['Ingestion into Staging'].append("Received update: Ingestion successful.")
