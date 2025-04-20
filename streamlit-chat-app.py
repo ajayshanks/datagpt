@@ -27,9 +27,9 @@ def main():
         display_step1(go_to_step_2)
     elif st.session_state.current_step == 2:
         display_step2()
-elif st.session_state.current_step == 3:
+    elif st.session_state.current_step == 3:
         display_step3()
-        display_step2()
+
 
 
 def display_step1(on_submit_callback):
