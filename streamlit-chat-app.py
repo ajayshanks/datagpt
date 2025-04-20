@@ -162,36 +162,11 @@ def display_step2():
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 2: Crawling and Ingestion")
 
+    # Initialize messages list if it doesn't exist
     if "step2_messages" not in st.session_state:
         st.session_state.step2_messages = []
 
-    response = st.session_state.webhook_response
-    if isinstance(response, dict) and "message" in response:
-        if response["message"] not in st.session_state.step2_messages:
-            st.session_state.step2_messages.append(response["message"])
-
-    if st.session_state.step2_messages:
-        st.markdown("### Webhook Responses:")
-        for i, msg in enumerate(st.session_state.step2_messages, 1):
-            st.info(f"{i}. {msg}")
-    else:
-        st.warning("Waiting for webhook responses...")
-
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Back to Step 1"):
-            st.session_state.current_step = 1
-            st.rerun()
-    with col2:
-        if st.button("Proceed to Step 3"):
-            proceed_to_step3()
-
-    st.title("Data to Insights Pipeline")
-    st.markdown("### An AI-assisted approach to transform your data into actionable insights")
-    st.markdown("## Step 2: Crawling and Ingestion")
-
-    # Simulate a loading spinner while fetching the webhook response
+    # Check if webhook response exists
     if 'webhook_response' not in st.session_state or not st.session_state.webhook_response:
         with st.spinner("Processing..."):
             progress = st.progress(0)
@@ -205,19 +180,36 @@ def display_step2():
             st.rerun()
         return
 
-    # Show just the "message" field
+    # Process webhook response
     response = st.session_state.webhook_response
     if isinstance(response, dict) and "message" in response:
         st.success("Response received!")
-        st.markdown(f"### Message from Webhook")
+        st.markdown("### Message from Webhook")
         st.info(response["message"])
+        
+        # Add to message history if not already there
+        if response["message"] not in st.session_state.step2_messages:
+            st.session_state.step2_messages.append(response["message"])
     else:
         st.warning("Webhook response does not contain a 'message' field.")
         st.json(response)
 
-    if st.button("Back to Step 1"):
-        st.session_state.current_step = 1
-        st.rerun()
+    # Display message history if it exists
+    if st.session_state.step2_messages and len(st.session_state.step2_messages) > 1:
+        st.markdown("### Previous Webhook Responses:")
+        for i, msg in enumerate(st.session_state.step2_messages[:-1], 1):
+            st.info(f"{i}. {msg}")
+
+    # Navigation buttons
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Step 1"):
+            st.session_state.current_step = 1
+            st.rerun()
+    with col2:
+        if st.button("Proceed to Step 3"):
+            proceed_to_step3()
 
 
 
