@@ -34,7 +34,7 @@ def display_step1(on_submit_callback):
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     
     # Step indicator
-    st.markdown("## Select your data and use case")
+    st.markdown("## Step 1: Select your data and use case")
     
     # Data sources and use cases
     data_sources = [
@@ -51,9 +51,9 @@ def display_step1(on_submit_callback):
         "Segmentation"
     ]
     
-    # Step 1 Webhook configuration
-    webhook_url_step1 = "https://ajayshanks.app.n8n.cloud/webhook-test/b058b9af-2a5d-4b61-ba29-3522902ba6c3"
-    bearer_token_step1 = "datagpt@123"  # Replace with actual token
+    # Step 2 Webhook configuration
+    webhook_url_step2 = "https://ajayshanks.app.n8n.cloud/webhook-test/b058b9af-2a5d-4b61-ba29-3522902ba6c3"
+    bearer_token_step2 = "datagpt@123"  # Replace with actual token
     
     # Form creation
     with st.form(key="data_insights_form"):
