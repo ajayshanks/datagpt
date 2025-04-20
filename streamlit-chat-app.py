@@ -2,6 +2,36 @@ import streamlit as st
 import requests
 import json
 
+st.set_page_config(page_title="Data to Insights Pipeline", layout="wide")
+
+# Apply Apple-style inspired white background and subtle styling
+st.markdown("""
+    <style>
+    body {
+        background-color: white !important;
+        color: #1d1d1f;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    .stTextArea textarea {
+        background-color: #f9f9f9;
+        border: 1px solid #dcdcdc;
+    }
+    .update-box {
+        background-color: #fefefe;
+        border: 1px solid #d0d0d0;
+        border-radius: 8px;
+        padding: 1em;
+        margin-bottom: 1em;
+    }
+    .stButton>button {
+        background-color: #0071e3;
+        color: white;
+        border-radius: 8px;
+        padding: 0.5em 1em;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Initialize session state for webhook responses
 if 'processing_updates' not in st.session_state:
     st.session_state.processing_updates = {
@@ -27,7 +57,7 @@ CONFIG = {
 }
 
 st.title("Data to Insights Pipeline")
-st.markdown("### Step 1: Select your data and use case")
+st.markdown("### Select your data and use case")
 
 # Step 1 form
 with st.form(key="data_insights_form"):
@@ -80,8 +110,11 @@ for section, config in CONFIG.items():
     st.markdown(f"### {section}")
     col1, col2 = st.columns([2, 1])
     with col1:
-        for update in st.session_state.processing_updates[section]:
-            st.markdown(f"- {update}")
+        with st.container():
+            st.markdown('<div class="update-box">', unsafe_allow_html=True)
+            for update in st.session_state.processing_updates[section]:
+                st.markdown(f"- {update}")
+            st.markdown('</div>', unsafe_allow_html=True)
     with col2:
         if st.button(f"Proceed to next step for {section}", key=f"btn_{section}"):
             try:
