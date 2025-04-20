@@ -52,7 +52,7 @@ def display_step1(on_submit_callback):
     ]
     
     # Step 2 Webhook configuration
-    webhook_url_step2 = "https://ajayshanks.app.n8n.cloud/webhook-test/b058b9af-2a5d-4b61-ba29-3522902ba6c3"
+    webhook_url_step2 = "https://ajayshanks.app.n8n.cloud/webhook-test/0cfd6c96-9c7c-46aa-8a58-30b11b499172"
     bearer_token_step2 = "datagpt@123"  # Replace with actual token
     
     # Form creation
