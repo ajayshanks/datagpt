@@ -4,25 +4,6 @@ import requests
 import json
 import pandas as pd
 
-def load_sample_data():
-    # This function loads the sample data structure used for demonstration
-    return json.loads('''[
-  {
-    "iqvia_xpo_rx": [
-      {
-        "column_name": "Prscrbr_Id",
-        "data_type": "int8"
-      },
-      # ... rest of the sample data
-    ],
-    "semarchy_cm_pub_m_hcp_profile": [
-      # ... sample data
-    ],
-    "zip_territory": [
-      # ... sample data
-    ]
-  }
-]''')
 
 def generate_sample_step3_data(table_names):
     """Generate sample data for step 3 when the webhook fails"""
@@ -319,9 +300,8 @@ def main():
         st.session_state.business_rules = [""]
     
     if 'webhook_response' not in st.session_state:
-        # This would normally be empty and filled from the actual webhook response
-        # For demonstration, we're pre-loading with sample data
-        st.session_state.webhook_response = load_sample_data()
+        # Initialize as None instead of using sample data
+        st.session_state.webhook_response = None
     
     # Function to handle step transition
     def go_to_step_2():
