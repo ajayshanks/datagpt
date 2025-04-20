@@ -154,6 +154,30 @@ def display_step1(on_submit_callback):
     st.markdown("---")
     st.markdown("Fill out the form above and click 'Submit' to continue to the next step.")
 
+def proceed_to_step3():
+    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
+    bearer_token_step3 = "datagpt@123"
+
+    data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
+    table_names = [f"stg_{source}" for source in data_sources]
+    payload = {"table_name": table_names}
+
+    st.session_state.step3_payload = payload
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {bearer_token_step3}",
+            "Content-Type": "application/json"
+        }
+        response = requests.post(webhook_url_step3, json=payload, headers=headers)
+        if response.status_code == 200:
+            st.session_state.step3_response = response.json()
+            st.session_state.current_step = 3
+            st.rerun()
+        else:
+            st.error(f"Step 3 webhook failed: {response.status_code} - {response.text}")
+    except Exception as e:
+        st.error(f"Exception during Step 3 webhook call: {str(e)}")
 
 
 
@@ -180,25 +204,30 @@ def display_step2():
             st.rerun()
         return
 
-    # Process webhook response
+    # Process webhook response - handle both dict and list formats
     response = st.session_state.webhook_response
-    if isinstance(response, dict) and "message" in response:
-        st.success("Response received!")
-        st.markdown("### Message from Webhook")
+    
+    # Display messages from the response
+    st.success("Response received!")
+    st.markdown("### Messages from Webhook")
+    
+    if isinstance(response, list):
+        # Handle JSON array response
+        for i, item in enumerate(response, 1):
+            if isinstance(item, dict) and "message" in item:
+                st.info(f"{i}. {item['message']}")
+                # Add to message history if not already there
+                if item["message"] not in st.session_state.step2_messages:
+                    st.session_state.step2_messages.append(item["message"])
+    elif isinstance(response, dict) and "message" in response:
+        # Handle single object response
         st.info(response["message"])
-        
         # Add to message history if not already there
         if response["message"] not in st.session_state.step2_messages:
             st.session_state.step2_messages.append(response["message"])
     else:
-        st.warning("Webhook response does not contain a 'message' field.")
+        st.warning("Webhook response does not contain expected format with 'message' field.")
         st.json(response)
-
-    # Display message history if it exists
-    if st.session_state.step2_messages and len(st.session_state.step2_messages) > 1:
-        st.markdown("### Previous Webhook Responses:")
-        for i, msg in enumerate(st.session_state.step2_messages[:-1], 1):
-            st.info(f"{i}. {msg}")
 
     # Navigation buttons
     st.markdown("---")
@@ -384,30 +413,6 @@ if __name__ == "__main__":
 
 
 
-def proceed_to_step3():
-    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
-    bearer_token_step3 = "datagpt@123"
-
-    data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
-    table_names = [f"stg_{source}" for source in data_sources]
-    payload = {"table_name": table_names}
-
-    st.session_state.step3_payload = payload
-
-    try:
-        headers = {
-            "Authorization": f"Bearer {bearer_token_step3}",
-            "Content-Type": "application/json"
-        }
-        response = requests.post(webhook_url_step3, json=payload, headers=headers)
-        if response.status_code == 200:
-            st.session_state.step3_response = response.json()
-            st.session_state.current_step = 3
-            st.rerun()
-        else:
-            st.error(f"Step 3 webhook failed: {response.status_code} - {response.text}")
-    except Exception as e:
-        st.error(f"Exception during Step 3 webhook call: {str(e)}")
 
 def display_step3():
     st.title("Step 3: Profiling and Tagging")
