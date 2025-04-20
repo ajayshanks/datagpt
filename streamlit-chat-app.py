@@ -157,80 +157,34 @@ def display_step2():
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 2: Crawling and Ingestion")
 
-    if st.session_state.webhook_response:
-        data = st.session_state.webhook_response
-
-        for dataset in data:
-            for source_name, columns in dataset.items():
-                st.subheader(f"Data Source: {source_name}")
-                df = pd.DataFrame(columns)
-
-                if f'edited_df_{source_name}' not in st.session_state:
-                    st.session_state[f'edited_df_{source_name}'] = df.copy()
-
-                edited_df = st.data_editor(
-                    st.session_state[f'edited_df_{source_name}'],
-                    key=f"editor_{source_name}",
-                    use_container_width=True,
-                    num_rows="fixed",
-                    hide_index=True,
-                    column_config={
-                        "column_name": st.column_config.Column("Column Name", disabled=True),
-                        "data_type": st.column_config.SelectboxColumn(
-                            "Data Type",
-                            options=["int8", "int", "float", "text", "varchar", "date", "timestamp", "boolean"],
-                            required=True
-                        )
-                    }
-                )
-                st.session_state[f'edited_df_{source_name}'] = edited_df
-
-        col1, col2 = st.columns(2)
-
-        if col1.button("Back to Step 1"):
-            st.session_state.current_step = 1
-            st.rerun()
-
-        if col2.button("Submit"):
-            updated_data = []
-            for dataset in data:
-                updated_dataset = {}
-                for source_name, _ in dataset.items():
-                    if f'edited_df_{source_name}' in st.session_state:
-                        updated_dataset[source_name] = st.session_state[f'edited_df_{source_name}'].to_dict('records')
-                updated_data.append(updated_dataset)
-
-            webhook_url = "https://your-webhook-endpoint.com/api/data-insights/update-types"
-            bearer_token = "YOUR_BEARER_TOKEN_HERE"
-
-            try:
-                headers = {
-                    "Authorization": f"Bearer {bearer_token}",
-                    "Content-Type": "application/json"
-                }
-                response = requests.post(webhook_url, json=updated_data, headers=headers)
-                if response.status_code == 200:
-                    response_json = response.json()
-                    st.session_state.step2_response_message = response_json.get("message", str(response_json))
-                    st.success("Webhook response received!")
-                else:
-                    st.session_state.step2_response_message = f"Error: {response.status_code} - {response.text}"
-                    st.error("Failed to submit updated types.")
-            except Exception as e:
-                st.session_state.step2_response_message = f"Exception occurred: {str(e)}"
-                st.error("Exception while posting to webhook.")
-
-        if 'step2_response_message' in st.session_state:
-            st.markdown("### Webhook Response")
-            st.info(st.session_state.step2_response_message)
-            if st.button("Proceed to Step 3"):
-                st.session_state.current_step = 3
-                st.rerun()
-    else:
+    # Simulate a loading spinner while fetching the webhook response
+    if 'webhook_response' not in st.session_state or not st.session_state.webhook_response:
+        with st.spinner("Processing..."):
+            progress = st.progress(0)
+            for i in range(100):
+                time.sleep(0.01)  # simulate delay
+                progress.progress(i + 1)
+        
         st.error("No data available from webhook response.")
         if st.button("Return to Step 1"):
             st.session_state.current_step = 1
             st.rerun()
+        return
+
+    # Show just the "message" field
+    response = st.session_state.webhook_response
+    if isinstance(response, dict) and "message" in response:
+        st.success("Response received!")
+        st.markdown(f"### Message from Webhook")
+        st.info(response["message"])
+    else:
+        st.warning("Webhook response does not contain a 'message' field.")
+        st.json(response)
+
+    if st.button("Back to Step 1"):
+        st.session_state.current_step = 1
+        st.rerun()
+
 
 
 def load_sample_data():
