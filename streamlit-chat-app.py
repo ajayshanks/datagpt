@@ -15,6 +15,7 @@ st.markdown("""
     .stTextArea textarea {
         background-color: #f9f9f9;
         border: 1px solid #dcdcdc;
+        color: black !important;
     }
     .update-box {
         background-color: #fefefe;
