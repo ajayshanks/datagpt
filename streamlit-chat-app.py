@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 import requests
 import json
@@ -25,6 +26,9 @@ def main():
     if st.session_state.current_step == 1:
         display_step1(go_to_step_2)
     elif st.session_state.current_step == 2:
+        display_step2()
+elif st.session_state.current_step == 3:
+        display_step3()
         display_step2()
 
 
@@ -152,7 +156,37 @@ def display_step1(on_submit_callback):
 
 
 
+
 def display_step2():
+    st.title("Data to Insights Pipeline")
+    st.markdown("### An AI-assisted approach to transform your data into actionable insights")
+    st.markdown("## Step 2: Crawling and Ingestion")
+
+    if "step2_messages" not in st.session_state:
+        st.session_state.step2_messages = []
+
+    response = st.session_state.webhook_response
+    if isinstance(response, dict) and "message" in response:
+        if response["message"] not in st.session_state.step2_messages:
+            st.session_state.step2_messages.append(response["message"])
+
+    if st.session_state.step2_messages:
+        st.markdown("### Webhook Responses:")
+        for i, msg in enumerate(st.session_state.step2_messages, 1):
+            st.info(f"{i}. {msg}")
+    else:
+        st.warning("Waiting for webhook responses...")
+
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Step 1"):
+            st.session_state.current_step = 1
+            st.rerun()
+    with col2:
+        if st.button("Proceed to Step 3"):
+            proceed_to_step3()
+
     st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 2: Crawling and Ingestion")
@@ -355,3 +389,61 @@ def load_sample_data():
 
 if __name__ == "__main__":
     main()
+
+
+
+def proceed_to_step3():
+    webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
+    bearer_token_step3 = "datagpt@123"
+
+    data_sources = st.session_state.get("last_payload", {}).get("data_sources", [])
+    table_names = [f"stg_{source}" for source in data_sources]
+    payload = {"table_name": table_names}
+
+    st.session_state.step3_payload = payload
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {bearer_token_step3}",
+            "Content-Type": "application/json"
+        }
+        response = requests.post(webhook_url_step3, json=payload, headers=headers)
+        if response.status_code == 200:
+            st.session_state.step3_response = response.json()
+            st.session_state.current_step = 3
+            st.rerun()
+        else:
+            st.error(f"Step 3 webhook failed: {response.status_code} - {response.text}")
+    except Exception as e:
+        st.error(f"Exception during Step 3 webhook call: {str(e)}")
+
+def display_step3():
+    st.title("Step 3: Profiling and Tagging")
+    st.markdown("### Review tags and summaries for each table and column")
+
+    if "step3_response" not in st.session_state or not st.session_state.step3_response:
+        st.warning("No response from Step 3 webhook")
+        return
+
+    table_data = []
+    column_data = []
+
+    for item in st.session_state.step3_response:
+        table_data.append({
+            "table_name": item["table_name"],
+            "classification": item["classification"],
+            "summary": item["summary"]
+        })
+        for tag in item["column_tags"]:
+            column_data.append({
+                "table_name": item["table_name"],
+                "column_name": tag["column_name"],
+                "tag": tag["tag"],
+                "description": tag["description"]
+            })
+
+    st.markdown("### Table Tags")
+    st.dataframe(pd.DataFrame(table_data))
+
+    st.markdown("### Column Tags")
+    st.dataframe(pd.DataFrame(column_data))
