@@ -386,7 +386,7 @@ def display_step3():
     st.markdown("## Step 3: Profiling and Tagging")
 
     if st.session_state.get("step3_loading", False):
-        with st.spinner("Processing..."):
+        with st.spinner("Waiting for webhook response... This may take some time."):
             webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
             bearer_token_step3 = "datagpt@123"
             payload = st.session_state.get("step3_payload", {})
@@ -396,25 +396,60 @@ def display_step3():
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
-                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=60)
+                # Increase timeout to wait longer for the webhook response
+                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=300)
+                
                 if response.status_code == 200 and response.text.strip():
                     st.session_state.step3_response = response.json()
+                    st.session_state.step3_loading = False
+                    st.rerun()
                 else:
-                    st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+                    st.error(f"Webhook returned an error status: {response.status_code} - {response.text}")
+                    # Keep the loading state so user can retry
+                    if st.button("Retry"):
+                        st.rerun()
+                    if st.button("Go back to Step 2"):
+                        st.session_state.current_step = 2
+                        st.session_state.step3_loading = False
+                        st.rerun()
+                    return
+            except requests.exceptions.Timeout:
+                st.error("The webhook request timed out. The server is taking too long to respond.")
+                # Keep the loading state so user can retry
+                if st.button("Retry"):
+                    st.rerun()
+                if st.button("Go back to Step 2"):
+                    st.session_state.current_step = 2
+                    st.session_state.step3_loading = False
+                    st.rerun()
+                return
             except Exception as e:
-                st.error(f"Exception: {str(e)}")
-                st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+                st.error(f"An error occurred: {str(e)}")
+                # Keep the loading state so user can retry
+                if st.button("Retry"):
+                    st.rerun()
+                if st.button("Go back to Step 2"):
+                    st.session_state.current_step = 2
+                    st.session_state.step3_loading = False
+                    st.rerun()
+                return
+        return  # This should never be reached if the spinner is showing
 
-            st.session_state.step3_loading = False
+    # If we get here, we are not in loading state
+    
+    # Check if we have the response data
+    if "step3_response" not in st.session_state or not st.session_state.step3_response:
+        st.warning("No data available from the webhook yet.")
+        if st.button("Start Processing"):
+            st.session_state.step3_loading = True
+            st.rerun()
+        if st.button("Go back to Step 2"):
+            st.session_state.current_step = 2
             st.rerun()
         return
 
     st.markdown("### Review tags and summaries for each table and column")
-
-    if "step3_response" not in st.session_state or not st.session_state.step3_response:
-        st.warning("No response from Step 3 webhook")
-        return
-
+    
     # Process the response data
     response_data = st.session_state.step3_response
     
@@ -430,7 +465,7 @@ def display_step3():
             "summary": item.get("summary", "No summary")
         })
         
-        # Handle column data - check for the structure in your response
+        # Handle column data
         for tag in item.get("column_tags", []):
             column_data.append({
                 "table_name": item.get("table_name") or item.get("staging_table_name", "Unknown"),
