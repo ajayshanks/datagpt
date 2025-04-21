@@ -80,7 +80,7 @@ def generate_sample_step5_data():
 
 def display_step1(on_submit_callback):
     # App header
-    st.title("Data to Insights Pipeline")
+    st.title("Data GPT: From Data to Insights")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     
     # Step indicator
@@ -271,7 +271,7 @@ def proceed_to_step5():
         st.rerun()
 
 def display_step2():
-    st.title("Data to Insights Pipeline")
+    st.title("Data GPT: From Data to Insights")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 2: Crawling and Ingestion")
 
@@ -330,7 +330,7 @@ def display_step2():
             proceed_to_step3()
 
 def display_step3():
-    st.title("Data to Insights Pipeline")
+    st.title("Data GPT: From Data to Insights")
     st.markdown("## Step 3: Profiling and Tagging")
 
     if st.session_state.get("step3_loading", False):
@@ -397,7 +397,7 @@ def display_step3():
             proceed_to_step4()
 
 def display_step4():
-    st.title("Data to Insights Pipeline")
+    st.title("Data GPT: From Data to Insights")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 4: Checking if Data Fit for Purpose")
     
@@ -479,7 +479,7 @@ def display_step4():
             proceed_to_step5()
 
 def display_step5():
-    st.title("Data to Insights Pipeline")
+    st.title("Data GPT: From Data to Insights")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 5: Data Quality Rule Recommendation")
     
