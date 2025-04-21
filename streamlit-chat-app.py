@@ -390,63 +390,47 @@ def display_step3():
             webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
             bearer_token_step3 = "datagpt@123"
             payload = st.session_state.get("step3_payload", {})
-
+            
+            # Debug the payload
+            st.info(f"Payload being sent to webhook: {json.dumps(payload, indent=2)}")
+            
             try:
                 headers = {
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
+                
+                # Add timeout parameter 
                 response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=300)
-                if response.status_code == 200 and response.text.strip():
-                    st.session_state.step3_response = response.json()
+                
+                # Debug the response
+                st.info(f"Response status code: {response.status_code}")
+                st.info(f"Response content: {response.text[:500]}...")  # Show first 500 chars
+                
+                if response.status_code == 200:
+                    if response.text.strip():
+                        try:
+                            st.session_state.step3_response = response.json()
+                            st.success("Successfully parsed webhook response")
+                        except json.JSONDecodeError as je:
+                            st.error(f"Failed to parse JSON response: {je}")
+                            st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+                    else:
+                        st.warning("Webhook returned empty response")
+                        st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
                 else:
+                    st.error(f"Webhook returned error status: {response.status_code}")
                     st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
-            except Exception:
+            except requests.exceptions.Timeout:
+                st.warning(f"Request to {webhook_url_step3} timed out")
+                st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
+            except Exception as e:
+                st.error(f"Exception during webhook call: {str(e)}")
                 st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
 
             st.session_state.step3_loading = False
             st.rerun()
         return
-
-    st.markdown("### Review tags and summaries for each table and column")
-
-    if "step3_response" not in st.session_state or not st.session_state.step3_response:
-        st.warning("No response from Step 3 webhook")
-        return
-
-    table_data = []
-    column_data = []
-
-    for item in st.session_state.step3_response:
-        table_data.append({
-            "table_name": item["table_name"],
-            "classification": item["classification"],
-            "summary": item["summary"]
-        })
-        for tag in item["column_tags"]:
-            column_data.append({
-                "table_name": item["table_name"],
-                "column_name": tag["column_name"],
-                "tag": tag["tag"],
-                "description": tag["description"]
-            })
-
-    st.markdown("### Table Tags")
-    st.dataframe(pd.DataFrame(table_data))
-
-    st.markdown("### Column Tags")
-    st.dataframe(pd.DataFrame(column_data))
-    
-    # Navigation buttons
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Back to Step 2"):
-            st.session_state.current_step = 2
-            st.rerun()
-    with col2:
-        if st.button("Proceed to Step 4"):
-            proceed_to_step4()
 
 def display_step4():
     st.title("Data to Insights Pipeline")
