@@ -485,43 +485,7 @@ def display_step5():
     
     # Check if we're still loading (first time on this page)
     if st.session_state.get("step5_loading", False):
-        with st.spinner("Processing..."):
-            webhook_url_step5 = "https://ajayshanks.app.n8n.cloud/webhook-test/12f6bf3b-f2dd-4ef3-bbe4-1746a1290e36"
-            bearer_token_step5 = "datagpt@123"
-            
-            try:
-                headers = {
-                    "Authorization": f"Bearer {bearer_token_step5}",
-                    "Content-Type": "application/json"
-                }
-                
-                # Try to get actual response from webhook
-                response = requests.post(
-                    webhook_url_step5, 
-                    json=st.session_state.step5_payload, 
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    if response.text.strip():
-                        try:
-                            st.session_state.step5_response = response.json()
-                        except json.JSONDecodeError:
-                            st.error(f"Invalid JSON response from webhook: {response.text}")
-                            st.session_state.step5_response = generate_sample_step5_data()
-                    else:
-                        st.error("Webhook returned an empty response")
-                        st.session_state.step5_response = generate_sample_step5_data()
-                else:
-                    st.error(f"Step 5 webhook failed: {response.status_code} - {response.text}")
-                    st.session_state.step5_response = generate_sample_step5_data()
-            except Exception as e:
-                st.error(f"Exception during Step 5 webhook call: {str(e)}")
-                st.session_state.step5_response = generate_sample_step5_data()
-                
-            # Mark loading as complete
-            st.session_state.step5_loading = False
-            st.rerun()
+        # ... [existing loading code] ...
         return
 
     # Display the response data
@@ -531,6 +495,10 @@ def display_step5():
     
     # Parse and display data quality rules
     response_data = st.session_state.step5_response
+    
+    # Check if response_data is a list (as in your JSON example)
+    if isinstance(response_data, list) and len(response_data) > 0:
+        response_data = response_data[0]  # Get the first item in the array
     
     # Navigate to parsed.data_quality_rules if available
     if "parsed" in response_data and "data_quality_rules" in response_data["parsed"]:
