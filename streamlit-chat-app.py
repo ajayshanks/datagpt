@@ -78,9 +78,30 @@ def generate_sample_step5_data():
         }
     }
 
+def generate_sample_step6_data():
+    """Generate sample data for step 6 when the webhook fails"""
+    return [
+        {
+            "integration_table_name": "int_sales_retail",
+            "primary_source_staging_table": "stg_iqvia_xpo_rx",
+            "secondary_source_staging_table": "stg_zip_territory",
+            "mapping": [],
+            "sql_query": "SELECT * FROM stg_iqvia_xpo_rx JOIN stg_zip_territory ON zip_code = territory_code",
+            "justification": "This mapping combines sales data with territory information for retail analysis"
+        },
+        {
+            "integration_table_name": "int_hcp_profile",
+            "primary_source_staging_table": "stg_semarchy_cm_pub_m_hcp_profile",
+            "secondary_source_staging_table": "stg_semarchy_cm_pub_x_hcp_address",
+            "mapping": [],
+            "sql_query": "SELECT * FROM stg_semarchy_cm_pub_m_hcp_profile JOIN stg_semarchy_cm_pub_x_hcp_address ON hcp_id = hcp_id",
+            "justification": "This mapping combines HCP profile data with address information"
+        }
+    ]
+
 def display_step1(on_submit_callback):
     # App header
-    st.title("Data GPT: From Data to Insights")
+    st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     
     # Step indicator
@@ -270,8 +291,36 @@ def proceed_to_step5():
         st.session_state.current_step = 5
         st.rerun()
 
+def proceed_to_step6():
+    webhook_url_step6 = "https://ajayshanks.app.n8n.cloud/webhook-test/c50d562c-05e5-4dc8-97bc-b9cd286e3d67"
+    bearer_token_step6 = "datagpt@123"
+
+    # Use the same payload as Step 5
+    payload = st.session_state.get("step5_payload", {})
+
+    st.session_state.step6_payload = payload
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {bearer_token_step6}",
+            "Content-Type": "application/json"
+        }
+        
+        st.info(f"Sending request to Step 6 webhook with payload: {payload}")
+        
+        # Set current step to 6 immediately to show the loading state
+        st.session_state.current_step = 6
+        st.session_state.step6_loading = True
+        st.rerun()
+    except Exception as e:
+        st.error(f"Exception preparing Step 6 webhook call: {str(e)}")
+        # For demonstration, use sample data when there's an error
+        st.session_state.step6_response = generate_sample_step6_data()
+        st.session_state.current_step = 6
+        st.rerun()
+
 def display_step2():
-    st.title("Data GPT: From Data to Insights")
+    st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 2: Crawling and Ingestion")
 
@@ -330,7 +379,7 @@ def display_step2():
             proceed_to_step3()
 
 def display_step3():
-    st.title("Data GPT: From Data to Insights")
+    st.title("Data to Insights Pipeline")
     st.markdown("## Step 3: Profiling and Tagging")
 
     if st.session_state.get("step3_loading", False):
@@ -397,7 +446,7 @@ def display_step3():
             proceed_to_step4()
 
 def display_step4():
-    st.title("Data GPT: From Data to Insights")
+    st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 4: Checking if Data Fit for Purpose")
     
@@ -479,7 +528,7 @@ def display_step4():
             proceed_to_step5()
 
 def display_step5():
-    st.title("Data GPT: From Data to Insights")
+    st.title("Data to Insights Pipeline")
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 5: Data Quality Rule Recommendation")
     
@@ -532,10 +581,6 @@ def display_step5():
     # Parse and display data quality rules
     response_data = st.session_state.step5_response
     
-    # Check if response_data is a list (as in your JSON example)
-    if isinstance(response_data, list) and len(response_data) > 0:
-        response_data = response_data[0]  # Get the first item in the array
-    
     # Navigate to parsed.data_quality_rules if available
     if "parsed" in response_data and "data_quality_rules" in response_data["parsed"]:
         data_quality_rules = response_data["parsed"]["data_quality_rules"]
@@ -543,15 +588,7 @@ def display_step5():
         st.markdown("### Recommended Data Quality Rules")
         
         if data_quality_rules:
-            # Create DataFrame and reorder columns as specified
             df = pd.DataFrame(data_quality_rules)
-            # Sort the DataFrame by table_name and column_name
-            df = df.sort_values(by=['table_name', 'column_name'])
-            # Reset the index to have sequential row numbers
-            df = df.reset_index(drop=True)
-            # Ensure columns exist and reorder them
-            columns_order = ["table_name", "column_name", "rule_name", "configuration_information"]
-            df = df.reindex(columns=columns_order)
             st.dataframe(df)
         else:
             st.info("No data quality rules were recommended.")
@@ -559,10 +596,98 @@ def display_step5():
         st.error("Response does not contain expected data quality rules format.")
         st.json(response_data)  # Show raw response for debugging
     
+    # Navigation buttons
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Step 4"):
+            st.session_state.current_step = 4
+            st.rerun()
+    with col2:
+        if st.button("Proceed to Step 6"):
+            proceed_to_step6()
+
+def display_step6():
+    st.title("Data to Insights Pipeline")
+    st.markdown("### An AI-assisted approach to transform your data into actionable insights")
+    st.markdown("## Step 6: Mapping Staging to Integration")
+    
+    # Check if we're still loading (first time on this page)
+    if st.session_state.get("step6_loading", False):
+        with st.spinner("Processing..."):
+            webhook_url_step6 = "https://ajayshanks.app.n8n.cloud/webhook-test/c50d562c-05e5-4dc8-97bc-b9cd286e3d67"
+            bearer_token_step6 = "datagpt@123"
+            
+            try:
+                headers = {
+                    "Authorization": f"Bearer {bearer_token_step6}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Try to get actual response from webhook
+                response = requests.post(
+                    webhook_url_step6, 
+                    json=st.session_state.step6_payload, 
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    if response.text.strip():
+                        try:
+                            st.session_state.step6_response = response.json()
+                        except json.JSONDecodeError:
+                            st.error(f"Invalid JSON response from webhook: {response.text}")
+                            st.session_state.step6_response = generate_sample_step6_data()
+                    else:
+                        st.error("Webhook returned an empty response")
+                        st.session_state.step6_response = generate_sample_step6_data()
+                else:
+                    st.error(f"Step 6 webhook failed: {response.status_code} - {response.text}")
+                    st.session_state.step6_response = generate_sample_step6_data()
+            except Exception as e:
+                st.error(f"Exception during Step 6 webhook call: {str(e)}")
+                st.session_state.step6_response = generate_sample_step6_data()
+                
+            # Mark loading as complete
+            st.session_state.step6_loading = False
+            st.rerun()
+        return
+
+    # Display the response data
+    if "step6_response" not in st.session_state:
+        st.warning("No response data available")
+        return
+    
+    # Parse and display mapping data
+    response_data = st.session_state.step6_response
+    
+    st.markdown("### Integration Table Mappings")
+    
+    if response_data:
+        # Create a DataFrame with the required columns
+        mapping_data = []
+        for item in response_data:
+            mapping_data.append({
+                "Integration Table Name": item.get("integration_table_name", ""),
+                "Primary Source Staging Table": item.get("primary_source_staging_table", ""),
+                "Secondary Source Staging Table": item.get("secondary_source_staging_table", ""),
+                "Justification": item.get("justification", ""),
+                "SQL Query": item.get("sql_query", "")
+            })
+        
+        if mapping_data:
+            df = pd.DataFrame(mapping_data)
+            st.dataframe(df)
+        else:
+            st.info("No mapping data was provided.")
+    else:
+        st.error("Response does not contain expected mapping data format.")
+        st.json(response_data)  # Show raw response for debugging
+    
     # Navigation button to go back
     st.markdown("---")
-    if st.button("Back to Step 4"):
-        st.session_state.current_step = 4
+    if st.button("Back to Step 5"):
+        st.session_state.current_step = 5
         st.rerun()
 
 def main():
@@ -593,6 +718,8 @@ def main():
         display_step4()
     elif st.session_state.current_step == 5:
         display_step5()
+    elif st.session_state.current_step == 6:
+        display_step6()
 
 if __name__ == "__main__":
     main()
