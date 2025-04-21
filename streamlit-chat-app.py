@@ -4,6 +4,9 @@ import requests
 import json
 import pandas as pd
 
+# Configure the page to use wide layout
+st.set_page_config(layout="wide")
+
 
 def generate_sample_step3_data(table_names):
     """Generate sample data for step 3 when the webhook fails"""
