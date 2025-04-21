@@ -545,6 +545,8 @@ def display_step5():
         if data_quality_rules:
             # Create DataFrame and reorder columns as specified
             df = pd.DataFrame(data_quality_rules)
+            # Sort the DataFrame by table_name and column_name
+            df = df.sort_values(by=['table_name', 'column_name'])
             # Ensure columns exist and reorder them
             columns_order = ["table_name", "column_name", "rule_name", "configuration_information"]
             df = df.reindex(columns=columns_order)
