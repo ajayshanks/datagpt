@@ -396,7 +396,7 @@ def display_step3():
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
-                response = requests.post(webhook_url_step3, json=payload, headers=headers)
+                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=300)
                 if response.status_code == 200 and response.text.strip():
                     st.session_state.step3_response = response.json()
                 else:
@@ -469,7 +469,7 @@ def display_step4():
                 response = requests.post(
                     webhook_url_step4, 
                     json=st.session_state.step4_payload, 
-                    headers=headers
+                    headers=headers, timeout = 300
                 )
                 
                 if response.status_code == 200:
@@ -551,7 +551,7 @@ def display_step5():
                 response = requests.post(
                     webhook_url_step5, 
                     json=st.session_state.step5_payload, 
-                    headers=headers
+                    headers=headers, timeout = 300
                 )
                 
                 if response.status_code == 200:
@@ -631,7 +631,7 @@ def display_step6():
                 response = requests.post(
                     webhook_url_step6, 
                     json=st.session_state.step6_payload, 
-                    headers=headers
+                    headers=headers, timeout = 300
                 )
                 
                 if response.status_code == 200:
