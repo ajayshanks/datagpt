@@ -51,6 +51,33 @@ def generate_sample_step4_data():
         ]
     }
 
+def generate_sample_step5_data():
+    """Generate sample data for step 5 when the webhook fails"""
+    return {
+        "parsed": {
+            "data_quality_rules": [
+                {
+                    "table_name": "stg_iqvia_xpo_rx", 
+                    "column_name": "product_id",
+                    "rule_name": "NOT_NULL",
+                    "configuration_information": "Column must not contain NULL values"
+                },
+                {
+                    "table_name": "stg_semarchy_cm_pub_m_hcp_profile", 
+                    "column_name": "hcp_id",
+                    "rule_name": "UNIQUE",
+                    "configuration_information": "Values must be unique"
+                },
+                {
+                    "table_name": "stg_zip_territory", 
+                    "column_name": "zip_code",
+                    "rule_name": "FORMAT_CHECK",
+                    "configuration_information": "Must match pattern: '\\d{5}'"
+                }
+            ]
+        }
+    }
+
 def display_step1(on_submit_callback):
     # App header
     st.title("Data to Insights Pipeline")
@@ -213,6 +240,34 @@ def proceed_to_step4():
         # For demonstration, use sample data when there's an error
         st.session_state.step4_response = generate_sample_step4_data()
         st.session_state.current_step = 4
+        st.rerun()
+
+def proceed_to_step5():
+    webhook_url_step5 = "https://ajayshanks.app.n8n.cloud/webhook-test/5e6f7g8h-9i10-11j12-13k14-15l16m17n18o"
+    bearer_token_step5 = "datagpt@123"
+
+    # Use the same payload as Step 3
+    payload = st.session_state.get("step3_payload", {})
+
+    st.session_state.step5_payload = payload
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {bearer_token_step5}",
+            "Content-Type": "application/json"
+        }
+        
+        st.info(f"Sending request to Step 5 webhook with payload: {payload}")
+        
+        # Set current step to 5 immediately to show the loading state
+        st.session_state.current_step = 5
+        st.session_state.step5_loading = True
+        st.rerun()
+    except Exception as e:
+        st.error(f"Exception preparing Step 5 webhook call: {str(e)}")
+        # For demonstration, use sample data when there's an error
+        st.session_state.step5_response = generate_sample_step5_data()
+        st.session_state.current_step = 5
         st.rerun()
 
 def display_step2():
@@ -412,10 +467,90 @@ def display_step4():
     else:
         st.success("No missing attributes found!")
     
+    # Navigation buttons
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Step 3"):
+            st.session_state.current_step = 3
+            st.rerun()
+    with col2:
+        if st.button("Proceed to Step 5"):
+            proceed_to_step5()
+
+def display_step5():
+    st.title("Data to Insights Pipeline")
+    st.markdown("### An AI-assisted approach to transform your data into actionable insights")
+    st.markdown("## Step 5: Data Quality Rule Recommendation")
+    
+    # Check if we're still loading (first time on this page)
+    if st.session_state.get("step5_loading", False):
+        with st.spinner("Processing..."):
+            webhook_url_step5 = "https://ajayshanks.app.n8n.cloud/webhook-test/5e6f7g8h-9i10-11j12-13k14-15l16m17n18o"
+            bearer_token_step5 = "datagpt@123"
+            
+            try:
+                headers = {
+                    "Authorization": f"Bearer {bearer_token_step5}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Try to get actual response from webhook
+                response = requests.post(
+                    webhook_url_step5, 
+                    json=st.session_state.step5_payload, 
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    if response.text.strip():
+                        try:
+                            st.session_state.step5_response = response.json()
+                        except json.JSONDecodeError:
+                            st.error(f"Invalid JSON response from webhook: {response.text}")
+                            st.session_state.step5_response = generate_sample_step5_data()
+                    else:
+                        st.error("Webhook returned an empty response")
+                        st.session_state.step5_response = generate_sample_step5_data()
+                else:
+                    st.error(f"Step 5 webhook failed: {response.status_code} - {response.text}")
+                    st.session_state.step5_response = generate_sample_step5_data()
+            except Exception as e:
+                st.error(f"Exception during Step 5 webhook call: {str(e)}")
+                st.session_state.step5_response = generate_sample_step5_data()
+                
+            # Mark loading as complete
+            st.session_state.step5_loading = False
+            st.rerun()
+        return
+
+    # Display the response data
+    if "step5_response" not in st.session_state:
+        st.warning("No response data available")
+        return
+    
+    # Parse and display data quality rules
+    response_data = st.session_state.step5_response
+    
+    # Navigate to parsed.data_quality_rules if available
+    if "parsed" in response_data and "data_quality_rules" in response_data["parsed"]:
+        data_quality_rules = response_data["parsed"]["data_quality_rules"]
+        
+        st.markdown("### Recommended Data Quality Rules")
+        
+        if data_quality_rules:
+            df = pd.DataFrame(data_quality_rules)
+            st.dataframe(df)
+        else:
+            st.info("No data quality rules were recommended.")
+    else:
+        st.error("Response does not contain expected data quality rules format.")
+        st.json(response_data)  # Show raw response for debugging
+    
     # Navigation button to go back
     st.markdown("---")
-    if st.button("Back to Step 3"):
-        st.session_state.current_step = 3
+    if st.button("Back to Step 4"):
+        st.session_state.current_step = 4
         st.rerun()
 
 def main():
@@ -444,6 +579,8 @@ def main():
         display_step3()
     elif st.session_state.current_step == 4:
         display_step4()
+    elif st.session_state.current_step == 5:
+        display_step5()
 
 if __name__ == "__main__":
     main()
