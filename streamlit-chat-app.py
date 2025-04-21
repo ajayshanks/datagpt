@@ -385,106 +385,73 @@ def display_step3():
     st.title("Data to Insights Pipeline")
     st.markdown("## Step 3: Profiling and Tagging")
 
-    # Debug what's in the session state
-    st.write("Debug - Session state keys:", list(st.session_state.keys()))
-    
-    if "step3_response" in st.session_state:
-        st.write("Debug - step3_response exists with type:", type(st.session_state.step3_response))
-        if isinstance(st.session_state.step3_response, list):
-            st.write(f"Debug - Number of items: {len(st.session_state.step3_response)}")
-
     if st.session_state.get("step3_loading", False):
         with st.spinner("Processing..."):
             webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
             bearer_token_step3 = "datagpt@123"
             payload = st.session_state.get("step3_payload", {})
-            
-            st.write("Debug - Payload:", payload)
-            
+
             try:
                 headers = {
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
-                
-                # Make the webhook call
                 response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=60)
-                
-                st.write(f"Debug - Response status: {response.status_code}")
-                
                 if response.status_code == 200 and response.text.strip():
-                    try:
-                        response_data = response.json()
-                        st.write("Debug - Got JSON response from webhook")
-                        st.session_state.step3_response = response_data
-                    except json.JSONDecodeError:
-                        st.write("Debug - Invalid JSON from webhook, using sample data")
-                        table_names = payload.get("table_name", [])
-                        st.write(f"Debug - Table names for sample data: {table_names}")
-                        st.session_state.step3_response = generate_sample_step3_data(table_names)
+                    st.session_state.step3_response = response.json()
                 else:
-                    st.write("Debug - No valid response from webhook, using sample data")
                     st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
             except Exception as e:
-                st.write(f"Debug - Exception: {str(e)}")
+                st.error(f"Exception: {str(e)}")
                 st.session_state.step3_response = generate_sample_step3_data(payload.get("table_name", []))
 
-            # Important - make sure we're actually setting the data and turning off loading
-            st.write("Debug - Setting step3_loading to False")
             st.session_state.step3_loading = False
-            st.rerun()
-            return
-
-    # Check explicitly if we have step3_response data to display
-    if "step3_response" not in st.session_state or not st.session_state.step3_response:
-        st.warning("No data available from Step 3. Debug info: " + str(st.session_state.get("step3_payload", {})))
-        
-        # Add a button to manually generate sample data
-        if st.button("Generate Sample Data"):
-            table_names = st.session_state.get("step3_payload", {}).get("table_name", [])
-            st.session_state.step3_response = generate_sample_step3_data(table_names)
             st.rerun()
         return
 
-    # If we reach here, we should have data to display
     st.markdown("### Review tags and summaries for each table and column")
-    
-    # Check the actual shape of the data
+
+    if "step3_response" not in st.session_state or not st.session_state.step3_response:
+        st.warning("No response from Step 3 webhook")
+        return
+
+    # Process the response data
     response_data = st.session_state.step3_response
-    st.write("Debug - Response data type:", type(response_data))
     
-    if isinstance(response_data, list) and len(response_data) > 0:
-        table_data = []
-        column_data = []
+    # Create empty lists for table and column data
+    table_data = []
+    column_data = []
 
-        for item in response_data:
-            table_data.append({
-                "table_name": item.get("table_name", "Unknown"),
-                "classification": item.get("classification", "Unknown"),
-                "summary": item.get("summary", "No summary")
+    for item in response_data:
+        # Handle table data
+        table_data.append({
+            "table_name": item.get("table_name") or item.get("staging_table_name", "Unknown"),
+            "classification": item.get("classification", "Unknown"),
+            "summary": item.get("summary", "No summary")
+        })
+        
+        # Handle column data - check for the structure in your response
+        for tag in item.get("column_tags", []):
+            column_data.append({
+                "table_name": item.get("table_name") or item.get("staging_table_name", "Unknown"),
+                "column_name": tag.get("column_name", "Unknown"),
+                "tag": tag.get("tag", ""),
+                "description": tag.get("description", "No description")
             })
-            for tag in item.get("column_tags", []):
-                column_data.append({
-                    "table_name": item.get("table_name", "Unknown"),
-                    "column_name": tag.get("column_name", "Unknown"),
-                    "tag": tag.get("tag", "Unknown"),
-                    "description": tag.get("description", "No description")
-                })
 
-        st.markdown("### Table Tags")
-        if table_data:
-            st.dataframe(pd.DataFrame(table_data))
-        else:
-            st.info("No table data available")
-
-        st.markdown("### Column Tags")
-        if column_data:
-            st.dataframe(pd.DataFrame(column_data))
-        else:
-            st.info("No column data available")
+    # Display table data
+    st.markdown("### Table Tags")
+    if table_data:
+        st.dataframe(pd.DataFrame(table_data))
     else:
-        st.error(f"Unexpected response data format. Expected a list but got: {type(response_data)}")
-        st.json(response_data)
+        st.info("No table data available")
+
+    # Display column data
+    st.markdown("### Column Tags")
+    if column_data:
+        st.dataframe(pd.DataFrame(column_data))
+    else:
+        st.info("No column data available")
     
     # Navigation buttons
     st.markdown("---")
