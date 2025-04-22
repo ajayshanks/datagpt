@@ -616,7 +616,19 @@ def display_step5():
     st.markdown("### Recommended Data Quality Rules")
     
     if data_quality_rules:
+        # Create a DataFrame and ensure columns are in the specified order
         df = pd.DataFrame(data_quality_rules)
+        
+        # Reorder columns as requested
+        column_order = ["table_name", "column_name", "rule_name", "configuration_information"]
+        df = df[column_order]
+        
+        # Sort by table_name then column_name
+        df = df.sort_values(by=["table_name", "column_name"])
+        
+        # Reset index
+        df = df.reset_index(drop=True)
+        
         st.dataframe(df)
     else:
         st.error("Response does not contain expected data quality rules format.")
