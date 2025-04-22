@@ -548,8 +548,8 @@ def display_step3():
     response_data = st.session_state.get("step3_response", None)
 
     if not response_data or not isinstance(response_data, dict) or "data" not in response_data:
-    st.warning("No valid step3_response found.")
-    return
+        st.warning("No valid step3_response found.")
+        return
 
     # Extract the actual list of table items
     table_items = response_data.get("data", [])
