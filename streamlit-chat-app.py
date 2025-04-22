@@ -483,7 +483,7 @@ def display_step3():
                     
                     if result:
                         # If we have results, parse the JSON and store it
-                        st.session_state.step3_response = json.loads(result[0])
+                        st.session_state.step3_response = result["data"]
                         st.session_state.step3_loading = False
                         st.rerun()
                     else:
