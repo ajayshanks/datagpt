@@ -474,7 +474,7 @@ def display_step3():
                     
                     # Execute SQL query to fetch results based on uniqueID
                     cur.execute(
-                        "SELECT response_data FROM n8n_processing_results WHERE unique_id = %s AND status = 'COMPLETED'",
+                        "SELECT response_data FROM n8n_processing_results WHERE unique_id = %s AND status = 'COMPLETED' AND step = 'profiling'",
                         (unique_id,)
                     )
                     
@@ -489,7 +489,7 @@ def display_step3():
                     else:
                         # Check if we need to continue polling or if there's an error
                         cur.execute(
-                            "SELECT status FROM n8n_processing_results WHERE unique_id = %s",
+                            "SELECT status FROM n8n_processing_results WHERE unique_id = %s AND step = 'profiling'",
                             (unique_id,)
                         )
                         status_result = cur.fetchone()
