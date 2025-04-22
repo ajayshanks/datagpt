@@ -385,8 +385,9 @@ def display_step3():
     st.title("Data to Insights Pipeline")
     st.markdown("## Step 3: Profiling and Tagging")
 
-    if st.session_state.get("step3_loading", False):
-        with st.spinner("Waiting for webhook response... This may take some time."):
+    # Initial loading state - calling webhook to get uniqueID
+    if st.session_state.get("step3_loading", False) and "step3_unique_id" not in st.session_state:
+        with st.spinner("Getting unique ID from webhook..."):
             webhook_url_step3 = "https://ajayshanks.app.n8n.cloud/webhook-test/2a51622b-8576-44e0-911d-c428c6533bc8"
             bearer_token_step3 = "datagpt@123"
             payload = st.session_state.get("step3_payload", {})
@@ -396,44 +397,137 @@ def display_step3():
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
-                # Increase timeout to wait longer for the webhook response
-                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=300)
+                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=60)
                 
                 if response.status_code == 200 and response.text.strip():
-                    st.session_state.step3_response = response.json()
-                    st.session_state.step3_loading = False
-                    st.rerun()
+                    try:
+                        # Assuming webhook returns {"uniqueID": "some-unique-id"}
+                        unique_id_response = response.json()
+                        if "uniqueID" in unique_id_response:
+                            st.session_state.step3_unique_id = unique_id_response["uniqueID"]
+                            st.rerun()
+                        else:
+                            st.error("Webhook response doesn't contain uniqueID")
+                            if st.button("Retry"):
+                                st.rerun()
+                            if st.button("Go back to Step 2"):
+                                st.session_state.current_step = 2
+                                st.session_state.step3_loading = False
+                                st.rerun()
+                    except json.JSONDecodeError:
+                        st.error(f"Invalid JSON response from webhook: {response.text}")
+                        if st.button("Retry"):
+                            st.rerun()
+                        if st.button("Go back to Step 2"):
+                            st.session_state.current_step = 2
+                            st.session_state.step3_loading = False
+                            st.rerun()
                 else:
                     st.error(f"Webhook returned an error status: {response.status_code} - {response.text}")
-                    # Keep the loading state so user can retry
                     if st.button("Retry"):
                         st.rerun()
                     if st.button("Go back to Step 2"):
                         st.session_state.current_step = 2
                         st.session_state.step3_loading = False
                         st.rerun()
-                    return
-            except requests.exceptions.Timeout:
-                st.error("The webhook request timed out. The server is taking too long to respond.")
-                # Keep the loading state so user can retry
-                if st.button("Retry"):
-                    st.rerun()
-                if st.button("Go back to Step 2"):
-                    st.session_state.current_step = 2
-                    st.session_state.step3_loading = False
-                    st.rerun()
-                return
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
-                # Keep the loading state so user can retry
                 if st.button("Retry"):
                     st.rerun()
                 if st.button("Go back to Step 2"):
                     st.session_state.current_step = 2
                     st.session_state.step3_loading = False
                     st.rerun()
-                return
-        return  # This should never be reached if the spinner is showing
+        return
+
+    # Secondary loading state - polling database for results
+    if "step3_unique_id" in st.session_state and st.session_state.get("step3_loading", False):
+        with st.spinner("Processing data... Fetching results from database"):
+            try:
+                # Define your PostgreSQL connection parameters
+                # These should be stored securely in a production environment
+                # Consider using st.secrets for secure storage
+                db_host = "aws-0-ap-south-1.pooler.supabase.com"
+                db_name = "postgres"
+                db_user = "postgres.pguxhjesyiffkujrrqyq"
+                db_password = "MfmoYcfS2n6CXkyw"
+                db_port = "6543"  # Default PostgreSQL port
+                
+                # Create a connection to the PostgreSQL database
+                conn = None
+                unique_id = st.session_state.step3_unique_id
+                
+                # Import necessary library
+                import psycopg2
+                
+                try:
+                    conn = psycopg2.connect(
+                        host=db_host,
+                        database=db_name,
+                        user=db_user,
+                        password=db_password,
+                        port=db_port
+                    )
+                    
+                    # Create a cursor
+                    cur = conn.cursor()
+                    
+                    # Execute SQL query to fetch results based on uniqueID
+                    cur.execute(
+                        "SELECT response_data FROM n8n_processing_results WHERE unique_id = %s AND status = 'COMPLETED'",
+                        (unique_id,)
+                    )
+                    
+                    # Fetch result
+                    result = cur.fetchone()
+                    
+                    if result:
+                        # If we have results, parse the JSON and store it
+                        st.session_state.step3_response = json.loads(result[0])
+                        st.session_state.step3_loading = False
+                        st.rerun()
+                    else:
+                        # Check if we need to continue polling or if there's an error
+                        cur.execute(
+                            "SELECT status FROM n8n_processing_results WHERE unique_id = %s",
+                            (unique_id,)
+                        )
+                        status_result = cur.fetchone()
+                        
+                        if status_result and status_result[0] == 'ERROR':
+                            st.error("Processing failed. Please try again.")
+                            if st.button("Retry"):
+                                # Reset and restart
+                                del st.session_state.step3_unique_id
+                                st.rerun()
+                            if st.button("Go back to Step 2"):
+                                st.session_state.current_step = 2
+                                st.session_state.step3_loading = False
+                                del st.session_state.step3_unique_id
+                                st.rerun()
+                        else:
+                            # Still processing, wait and then rerun to check again
+                            time.sleep(5)  # Wait 5 seconds before polling again
+                            st.rerun()
+                
+                finally:
+                    # Close cursor and connection
+                    if conn is not None:
+                        if cur is not None:
+                            cur.close()
+                        conn.close()
+            
+            except Exception as e:
+                st.error(f"Database error: {str(e)}")
+                if st.button("Retry"):
+                    st.rerun()
+                if st.button("Go back to Step 2"):
+                    st.session_state.current_step = 2
+                    st.session_state.step3_loading = False
+                    if "step3_unique_id" in st.session_state:
+                        del st.session_state.step3_unique_id
+                    st.rerun()
+        return
 
     # If we get here, we are not in loading state
     
