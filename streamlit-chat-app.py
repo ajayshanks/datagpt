@@ -754,61 +754,177 @@ def display_step6():
     st.markdown("### An AI-assisted approach to transform your data into actionable insights")
     st.markdown("## Step 6: Mapping Staging to Integration")
     
-    # Check if we're still loading (first time on this page)
-    if st.session_state.get("step6_loading", False):
-        with st.spinner("Processing..."):
+    # Initial loading state - calling webhook to get uniqueID
+    if st.session_state.get("step6_loading", False) and "step6_unique_id" not in st.session_state:
+        with st.spinner("Getting unique ID from webhook..."):
             webhook_url_step6 = "https://ajayshanks.app.n8n.cloud/webhook-test/c50d562c-05e5-4dc8-97bc-b9cd286e3d67"
             bearer_token_step6 = "datagpt@123"
-            
+            payload = st.session_state.get("step6_payload", {})
+
             try:
                 headers = {
                     "Authorization": f"Bearer {bearer_token_step6}",
                     "Content-Type": "application/json"
                 }
+                response = requests.post(webhook_url_step6, json=payload, headers=headers, timeout=60)
                 
-                # Try to get actual response from webhook
-                response = requests.post(
-                    webhook_url_step6, 
-                    json=st.session_state.step6_payload, 
-                    headers=headers, timeout = 300
-                )
-                
-                if response.status_code == 200:
-                    if response.text.strip():
-                        try:
-                            st.session_state.step6_response = response.json()
-                        except json.JSONDecodeError:
-                            st.error(f"Invalid JSON response from webhook: {response.text}")
-                            st.session_state.step6_response = generate_sample_step6_data()
-                    else:
-                        st.error("Webhook returned an empty response")
-                        st.session_state.step6_response = generate_sample_step6_data()
+                if response.status_code == 200 and response.text.strip():
+                    try:
+                        # Assuming webhook returns {"uniqueID": "some-unique-id"}
+                        unique_id_response = response.json()
+                        if "uniqueID" in unique_id_response:
+                            st.session_state.step6_unique_id = unique_id_response["uniqueID"]
+                            st.rerun()
+                        else:
+                            st.error("Webhook response doesn't contain uniqueID")
+                            if st.button("Retry"):
+                                st.rerun()
+                            if st.button("Go back to Step 5"):
+                                st.session_state.current_step = 5
+                                st.session_state.step6_loading = False
+                                st.rerun()
+                    except json.JSONDecodeError:
+                        st.error(f"Invalid JSON response from webhook: {response.text}")
+                        if st.button("Retry"):
+                            st.rerun()
+                        if st.button("Go back to Step 5"):
+                            st.session_state.current_step = 5
+                            st.session_state.step6_loading = False
+                            st.rerun()
                 else:
-                    st.error(f"Step 6 webhook failed: {response.status_code} - {response.text}")
-                    st.session_state.step6_response = generate_sample_step6_data()
+                    st.error(f"Webhook returned an error status: {response.status_code} - {response.text}")
+                    if st.button("Retry"):
+                        st.rerun()
+                    if st.button("Go back to Step 5"):
+                        st.session_state.current_step = 5
+                        st.session_state.step6_loading = False
+                        st.rerun()
             except Exception as e:
-                st.error(f"Exception during Step 6 webhook call: {str(e)}")
-                st.session_state.step6_response = generate_sample_step6_data()
-                
-            # Mark loading as complete
-            st.session_state.step6_loading = False
-            st.rerun()
+                st.error(f"An error occurred: {str(e)}")
+                if st.button("Retry"):
+                    st.rerun()
+                if st.button("Go back to Step 5"):
+                    st.session_state.current_step = 5
+                    st.session_state.step6_loading = False
+                    st.rerun()
         return
 
-    # Display the response data
+    # Secondary loading state - polling database for results
+    if "step6_unique_id" in st.session_state and st.session_state.get("step6_loading", False):
+        with st.spinner("Processing data... Fetching results from database"):
+            try:
+                # Define your PostgreSQL connection parameters
+                # These should be stored securely in a production environment
+                # Consider using st.secrets for secure storage
+                db_host = "aws-0-ap-south-1.pooler.supabase.com"
+                db_name = "postgres"
+                db_user = "postgres.pguxhjesyiffkujrrqyq"
+                db_password = "MfmoYcfS2n6CXkyw"
+                db_port = "6543"  # Default PostgreSQL port
+                
+                # Create a connection to the PostgreSQL database
+                conn = None
+                unique_id = st.session_state.step6_unique_id
+                
+                # Import necessary library
+                import psycopg2
+                
+                try:
+                    conn = psycopg2.connect(
+                        host=db_host,
+                        database=db_name,
+                        user=db_user,
+                        password=db_password,
+                        port=db_port
+                    )
+                    
+                    # Create a cursor
+                    cur = conn.cursor()
+                    
+                    # Execute SQL query to fetch results based on uniqueID
+                    cur.execute(
+                        "SELECT response_data FROM demo_datawarehouse.n8n_processing_results WHERE unique_id = %s AND status = 'COMPLETED' AND step = 'integration_mapping'",
+                        (unique_id,)
+                    )
+                    
+                    # Fetch result
+                    result = cur.fetchone()
+                    
+                    if result:
+                        # If we have results, parse the JSON and store it
+                        st.session_state.step6_response = json.loads(result[0])
+                        st.session_state.step6_loading = False
+                        st.rerun()
+                    else:
+                        # Check if we need to continue polling or if there's an error
+                        cur.execute(
+                            "SELECT status FROM demo_datawarehouse.n8n_processing_results WHERE unique_id = %s AND step = 'integration_mapping'",
+                            (unique_id,)
+                        )
+                        status_result = cur.fetchone()
+                        
+                        if status_result and status_result[0] == 'ERROR':
+                            st.error("Processing failed. Please try again.")
+                            if st.button("Retry"):
+                                # Reset and restart
+                                del st.session_state.step6_unique_id
+                                st.rerun()
+                            if st.button("Go back to Step 5"):
+                                st.session_state.current_step = 5
+                                st.session_state.step6_loading = False
+                                del st.session_state.step6_unique_id
+                                st.rerun()
+                        else:
+                            # Still processing, wait and then rerun to check again
+                            time.sleep(5)  # Wait 5 seconds before polling again
+                            st.rerun()
+                
+                finally:
+                    # Close cursor and connection
+                    if conn is not None:
+                        if cur is not None:
+                            cur.close()
+                        conn.close()
+            
+            except Exception as e:
+                st.error(f"Database error: {str(e)}")
+                if st.button("Retry"):
+                    st.rerun()
+                if st.button("Go back to Step 5"):
+                    st.session_state.current_step = 5
+                    st.session_state.step6_loading = False
+                    if "step6_unique_id" in st.session_state:
+                        del st.session_state.step6_unique_id
+                    st.rerun()
+        return
+
+    # If we get here, we are not in loading state
+    
+    # Check if we have the response data
     if "step6_response" not in st.session_state:
         st.warning("No response data available")
+        if st.button("Start Processing"):
+            st.session_state.step6_loading = True
+            st.rerun()
+        if st.button("Go back to Step 5"):
+            st.session_state.current_step = 5
+            st.rerun()
         return
     
-    # Parse and display mapping data
-    response_data = st.session_state.step6_response
+    
+    # Process the response data
+    response_data = st.session_state.get("step6_response", None)
+
+    if not response_data or not isinstance(response_data, dict) or "data" not in response_data:
+        st.warning("No valid step6_response found.")
+        return
     
     st.markdown("### Integration Table Mappings")
     
     if response_data:
         # Create a DataFrame with the required columns
         mapping_data = []
-        for item in response_data:
+        for item in response_data["data"]:
             mapping_data.append({
                 "Integration Table Name": item.get("integration_table_name", ""),
                 "Primary Source Staging Table": item.get("primary_source_staging_table", ""),
