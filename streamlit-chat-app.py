@@ -397,7 +397,7 @@ def display_step3():
                     "Authorization": f"Bearer {bearer_token_step3}",
                     "Content-Type": "application/json"
                 }
-                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=60)
+                response = requests.post(webhook_url_step3, json=payload, headers=headers, timeout=180)
                 
                 if response.status_code == 200 and response.text.strip():
                     try:
@@ -483,7 +483,7 @@ def display_step3():
                     
                     if result:
                         # If we have results, parse the JSON and store it
-                        st.session_state.step3_response = json.loads(result)
+                        st.session_state.step3_response = json.loads(result[0])
                         st.session_state.step3_loading = False
                         st.rerun()
                     else:
