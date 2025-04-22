@@ -546,23 +546,29 @@ def display_step3():
     
     # Process the response data
     response_data = st.session_state.step3_response
+
+    # Extract the actual list of table items
+    table_items = response_data.get("data", [])
     
     # Create empty lists for table and column data
     table_data = []
     column_data = []
 
-    for item in response_data:
+    for item in table_items:
+        # Extract table name safely
+        table_name = item.get("table_name") or item.get("staging_table_name", "Unknown")
+
         # Handle table data
         table_data.append({
-            "table_name": item.get("table_name") or item.get("staging_table_name", "Unknown"),
+            "table_name": table_name,
             "classification": item.get("classification", "Unknown"),
             "summary": item.get("summary", "No summary")
         })
-        
+
         # Handle column data
         for tag in item.get("column_tags", []):
             column_data.append({
-                "table_name": item.get("table_name") or item.get("staging_table_name", "Unknown"),
+                "table_name": table_name,
                 "column_name": tag.get("column_name", "Unknown"),
                 "tag": tag.get("tag", ""),
                 "description": tag.get("description", "No description")
